@@ -9,100 +9,115 @@
     templateBook: '#template-book',
   };
   const template = {
-    bookMenu: Handlebars.compile(document.querySelector(select.templateBook).innerHTML),
+    bookMenu: Handlebars.compile(
+      document.querySelector(select.templateBook).innerHTML
+    ),
   };
-  let favoriteBooks =[];
-  let filters =[];
+  let favoriteBooks = [];
+  let filters = [];
 
-  function render(){
-    const data = dataSource.books;
-    const bookContainer = document.querySelector(select.allBook);
-    bookContainer.innerHTML = '';
-
-    for(const book of data){
-      book.ratingBgc = setColorRating(book.rating);
-      book.ratingWidth = book.rating * 10;
-
-      const generateHTML = template.bookMenu(book);
-      const element = utils.createDOMFromHTML(generateHTML);
-
-      bookContainer.appendChild(element);
+  class BookList{
+    constructor(){
+      const thisBookList = this;
+      thisBookList.initData();
+      // console.log(thisBookList);
+      thisBookList.getElements();
+      thisBookList.renderBooks();
+      thisBookList.initActions();
     }
 
-    console.log(bookContainer);
-    initAction();
-  }
+    getElements(){
+      const thisBookList = this;
+      thisBookList.dom = {};
+      thisBookList.dom.allBook = document.querySelector(select.allBook);
+      thisBookList.dom.filters = document.querySelector(select.filters);
+    }
 
-  function initAction(){
-    const allBooks = document.querySelector(select.allBook);
-    const filtersDOM = document.querySelector(select.filters);
-    filtersDOM.addEventListener('click', (e) => {
-      e.preventDefault();
-      const filter = e.target;
-      const value = filter.getAttribute('value');
-      if(filter.tagName === 'INPUT' && filter.type === 'checkbox' && filter.name === 'filter') {
-        if(filter.checked){
-          if(!filters.includes(value)){
+    initData(){
+      const thisBookList = this;
+      thisBookList.data = dataSource.books;
+    }
+    initActions(){
+      const thisBookList = this;
+      const allBooks = thisBookList.dom.allBook;
+      const filtersDOM = thisBookList.dom.filters;
+      filtersDOM.addEventListener('click', (e) => {
+        const filter = e.target;
+        const value = filter.getAttribute('value');
+        if (
+          filter.tagName === 'INPUT' &&
+          filter.type === 'checkbox' &&
+          filter.name === 'filter'
+        ) {
+          if (!filters.includes(value)) {
             filters.push(value);
-          }
-          else {
+          } else {
             const index = filters.indexOf(value);
             if (index !== -1) {
               filters.splice(index, 1);
             }
           }
+          thisBookList.renderByFilters(filters);
         }
-        renderByFilters(filters);
-      }
-    });
-    allBooks.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      const image = e.target;
-      console.log(image.offsetParent);
-      if(image.offsetParent.classList.contains('book__image')) {
-        const imageId = image.offsetParent.getAttribute('data-id');
-        image.offsetParent.classList.toggle('favorite');
-        if(favoriteBooks.includes(imageId)){
-          const index = favoriteBooks.indexOf(imageId);
-          favoriteBooks.splice(index, 1);
+      });
+      allBooks.addEventListener('dblclick', (e) => {
+        e.preventDefault();
+        const image = e.target;
+        console.log(image.offsetParent);
+        if (image.offsetParent.classList.contains('book__image')) {
+          const imageId = image.offsetParent.getAttribute('data-id');
+          image.offsetParent.classList.toggle('favorite');
+          if (favoriteBooks.includes(imageId)) {
+            const index = favoriteBooks.indexOf(imageId);
+            favoriteBooks.splice(index, 1);
+          } else {
+            favoriteBooks.push(imageId);
+          }
+        }
+        console.log(favoriteBooks);
+      });
+    }
+    renderByFilters(filters) {
+      const thisBookList = this;
+      for (const book of thisBookList.data) {
+        let shouldBeFiltered = false;
+        for (const filter of filters) {
+          if (!book.details[filter]) {
+            shouldBeFiltered = true;
+            break;
+          }
+        }
+        const bookElement = document.querySelector(
+          `.book__image[data-id="${book.id}"]`
+        );
+        if (shouldBeFiltered) {
+          bookElement.classList.add('hidden');
         } else {
-          favoriteBooks.push(imageId);
+          bookElement.classList.remove('hidden');
         }
       }
+    }
+    renderBooks() {
+      const thisBookList = this;
+      // bookContainer.innerHTML = '';
 
-      console.log(favoriteBooks);
-    });
-  }
-  function renderByFilters(filters){
-    const data = dataSource.books;
-    for(const book of data){
-      let shouldBeFiltered = false;
-      for(const filter of filters){
-        if(!book.details[filter]){
-          shouldBeFiltered = true;
-          break;
-        }
+      for (const book of thisBookList.data) {
+        book.ratingBgc = thisBookList.determineRatingBgc(book.rating);
+        book.ratingWidth = book.rating * 10;
+
+        const generateHTML = template.bookMenu(book);
+        const element = utils.createDOMFromHTML(generateHTML);
+        const bookContainer = thisBookList.dom.allBook;
+        bookContainer.appendChild(element);
       }
-      const bookElement = document.querySelector(`.book__image[data-id="${book.id}"]`);
-      if(shouldBeFiltered){
-        bookElement.classList.add('hidden');
-      } else{
-        bookElement.classList.remove('hidden');
-      }
+    }
+    determineRatingBgc(rating) {
+      if (rating < 6) return 'linear-gradient(to bottom, #f00000, #dc281e)';
+      if (rating >= 6 && rating < 8) return 'linear-gradient(to bottom, #f5d020, #f53803)';
+      if (rating >= 8 && rating < 9) return 'linear-gradient(to bottom, #66ff66, #33cc33)';
+      return 'linear-gradient(to bottom, #008000, #004d00)';
     }
   }
 
-  function setColorRating(rating){
-    if (rating < 6) {
-      return 'linear-gradient(to bottom, #f34444 0%,#f34444 100%)';
-    } else if (rating >= 6 && rating < 8) {
-      return 'linear-gradient(to bottom, #ffb820 0%,#ffb820 100%)';
-    } else if (rating >= 8 && rating < 9) {
-      return 'linear-gradient(to bottom, #b4df5b 0%,#b4df5b 100%)';
-    } else {
-      return 'linear-gradient(to bottom, #299a0b 0%,#299a0b 100%)';
-    }
-  }
-
-  render();
+  new BookList();
 }
